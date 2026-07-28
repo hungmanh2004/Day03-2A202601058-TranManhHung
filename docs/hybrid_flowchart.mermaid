@@ -1,0 +1,63 @@
+%% ============================================================
+%% 🔀 HYBRID FLOWCHART - Agent Tư vấn Định hướng Nghề nghiệp
+%% Role 5B (Flowchart Architect) - Mốc 4
+%% Phân luồng: Câu hỏi ĐƠN GIẢN -> Chatbot | Câu hỏi PHỨC TẠP -> ReAct Agent
+%% ============================================================
+flowchart TD
+    Start([👤 Người dùng đặt câu hỏi]) --> Router{🧭 Router phân loại<br/>độ phức tạp câu hỏi}
+
+    %% ---------- Nhánh phân luồng chính ----------
+    Router -->|🟢 Câu hỏi ĐƠN GIẢN<br/>kiến thức tổng quát,<br/>không cần dữ liệu thực| ChatbotPath
+    Router -->|🟡 Câu hỏi PHỨC TẠP<br/>multi-step, cần tra cứu,<br/>cần tính toán skill gap| ReActPath
+
+    %% ============================================================
+    %% 🟢 CHATBOT PATH (Baseline - chỉ dùng LLM, không có Tool)
+    %% ============================================================
+    subgraph ChatbotPath [🟢 CHATBOT PATH]
+        direction TB
+        CB1[⚙️ Nạp CHATBOT_BASELINE_PROMPT] --> CB2[💬 LLM sinh câu trả lời trực tiếp<br/>từ kiến thức có sẵn]
+        CB2 --> CB3[🛡️ Guardrail Prompt:<br/>không bịa dữ liệu thời gian thực,<br/>không áp đặt 1 nghề duy nhất]
+    end
+
+    %% ============================================================
+    %% 🟡 REACT AGENT PATH (Thought -> Action -> Observation Loop)
+    %% ============================================================
+    subgraph ReActPath [🟡 REACT AGENT PATH]
+        direction TB
+        RA1[⚙️ Nạp REACT_SYSTEM_PROMPT<br/>+ đăng ký 5 Tool nghề nghiệp] --> RA2[🧠 Thought: suy luận bước tiếp theo]
+        RA2 --> RA3[🛠️ Action: chọn & gọi Tool]
+        RA3 --> Tools{{🧰 Tool Registry}}
+        Tools --> T1[assess_user_profile]
+        Tools --> T2[search_careers]
+        Tools --> T3[get_career_details]
+        Tools --> T4[analyze_skill_gap]
+        Tools --> T5[recommend_learning_path]
+        T1 --> RA4
+        T2 --> RA4
+        T3 --> RA4
+        T4 --> RA4
+        T5 --> RA4
+        RA4[👁️ Observation: nhận kết quả Tool<br/>Tool lỗi -> trả chuỗi lỗi, KHÔNG crash] --> RA5{✅ Đã đủ thông tin<br/>để trả lời?}
+        RA5 -->|Chưa đủ| Guard{🛡️ step < MAX_ITERATIONS = 3 ?}
+        Guard -->|Còn lượt| RA2
+        Guard -->|Hết lượt| Stop[🛑 GUARDRAIL: ngắt lặp an toàn]
+        RA5 -->|Đủ| RA6[🏁 Final Answer]
+    end
+
+    %% ============================================================
+    %% 🎯 HỘI TỤ KẾT QUẢ
+    %% ============================================================
+    CB3 --> Answer([📤 Phản hồi tới người dùng])
+    RA6 --> Answer
+    Stop --> Answer
+
+    %% ---------- Styling ----------
+    classDef simple fill:#d4f8d4,stroke:#2e7d32,color:#1b5e20;
+    classDef react fill:#fff4cc,stroke:#f9a825,color:#7f5f00;
+    classDef guard fill:#ffd6d6,stroke:#c62828,color:#8e0000;
+    classDef io fill:#dbe9ff,stroke:#1565c0,color:#0d3c78;
+
+    class CB1,CB2,ChatbotPath simple;
+    class RA1,RA2,RA3,RA4,RA6,Tools,T1,T2,T3,T4,T5,ReActPath react;
+    class CB3,Guard,Stop,RA5,Router guard;
+    class Start,Answer io;
