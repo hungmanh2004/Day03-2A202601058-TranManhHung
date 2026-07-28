@@ -74,4 +74,144 @@ start_career_survey
 ### 🤖 Chatbot Baseline:
 
 - **Phản hồi**: *"🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test."*
-- **Nhận xét**: Baseline chatbot trong lần chạy này chưa tạo được câu trả lời nghề nghiệp thực 
+- **Nhận xét**: Baseline chatbot trong lần chạy này chưa tạo được câu trả lời nghề nghiệp thực tế vì đang sử dụng dữ liệu phản hồi giả lập.
+
+---
+
+## 🔎 REACT TRACE LOG — THOUGHT → ACTION → OBSERVATION
+
+**Thời điểm chạy:** 28/07/2026
+
+**Provider:** `OpenAIProvider`
+
+**Model:** `gpt-4o-mini`
+
+**Guardrail:** Tối đa 6 vòng lặp
+
+**Kết quả:** Hoàn thành sau 4 bước, không kích hoạt guardrail.
+
+**Câu hỏi người dùng:**
+
+> Tôi tốt nghiệp Công nghệ Thông tin, biết Python và Excel, thích làm việc với dữ liệu và logic. Tôi nên theo nghề gì và cần học thêm những kỹ năng nào?
+
+### Step 1 — Chuẩn hóa hồ sơ người dùng
+
+```text
+Thought: Tôi cần thu thập thông tin về sở thích, kỹ năng và học vấn của
+người dùng để tìm nghề phù hợp.
+
+Action: assess_user_profile[{
+  "education": "Công nghệ Thông tin",
+  "skills": ["Python", "Excel"],
+  "interests": ["Dữ liệu", "Logic"],
+  "personality": "",
+  "goals": ""
+}]
+
+Observation: {
+  "education": "Công nghệ Thông tin",
+  "normalized_skills": ["Python", "Excel"],
+  "normalized_interests": ["Dữ Liệu", "Logic"],
+  "personality": "",
+  "career_goals": "",
+  "suggested_fields": ["Công nghệ / Dữ liệu"],
+  "profile_summary": "Người dùng có nền tảng 'Công nghệ Thông tin',
+  sở hữu 2 kỹ năng, quan tâm đến 2 lĩnh vực. Định hướng phù hợp:
+  Công nghệ / Dữ liệu."
+}
+```
+
+### Step 2 — Tìm các nghề phù hợp
+
+```text
+Thought: Tôi đã có đủ thông tin về hồ sơ người dùng và giờ tôi sẽ tìm
+kiếm các nghề phù hợp dựa trên sở thích và kỹ năng của họ.
+
+Action: search_careers[{
+  "interests": ["Dữ Liệu", "Logic"],
+  "skills": ["Python", "Excel"]
+}]
+
+Observation: [
+  {
+    "career_code": "data_analyst",
+    "career_name": "Chuyên viên Phân tích Dữ liệu (Data Analyst)",
+    "field": "Công nghệ / Dữ liệu",
+    "match_score": 10,
+    "reason": "phù hợp sở thích: logic, dữ liệu; có sẵn kỹ năng:
+    python, excel"
+  },
+  {
+    "career_code": "software_developer",
+    "career_name": "Lập trình viên Phần mềm (Software Developer)",
+    "field": "Công nghệ / Kỹ thuật",
+    "match_score": 5,
+    "reason": "phù hợp sở thích: logic; có sẵn kỹ năng: python"
+  },
+  {
+    "career_code": "data_scientist",
+    "career_name": "Nhà Khoa học Dữ liệu (Data Scientist)",
+    "field": "Công nghệ / Dữ liệu",
+    "match_score": 5,
+    "reason": "phù hợp sở thích: dữ liệu; có sẵn kỹ năng: python"
+  },
+  {
+    "career_code": "business_analyst",
+    "career_name": "Chuyên viên Phân tích Nghiệp vụ (Business Analyst)",
+    "field": "Kinh doanh / Quản lý",
+    "match_score": 5,
+    "reason": "phù hợp sở thích: logic; có sẵn kỹ năng: excel"
+  }
+]
+```
+
+### Step 3 — Phân tích khoảng cách kỹ năng
+
+```text
+Thought: Tôi đã tìm thấy một số nghề phù hợp với hồ sơ của bạn, đặc biệt
+là "Chuyên viên Phân tích Dữ liệu". Giờ tôi sẽ phân tích kỹ năng cần
+thiết cho nghề này để xác định những kỹ năng bạn cần học thêm.
+
+Action: analyze_skill_gap[{
+  "user_skills": ["Python", "Excel"],
+  "target_career": "Chuyên viên Phân tích Dữ liệu"
+}]
+
+Observation: {
+  "career_code": "data_analyst",
+  "career_name": "Chuyên viên Phân tích Dữ liệu (Data Analyst)",
+  "matched_skills": ["Python", "Excel"],
+  "missing_skills": ["SQL", "Thống kê", "Trực quan hóa dữ liệu"],
+  "match_percentage": 40.0,
+  "summary": "Bạn đã đáp ứng 2/5 kỹ năng yêu cầu cho nghề
+  'Chuyên viên Phân tích Dữ liệu (Data Analyst)' (đạt 40.0%)."
+}
+```
+
+### Step 4 — Kết luận
+
+```text
+Thought: Tôi đã có đủ thông tin để trả lời.
+
+Final Answer: Bạn có thể xem xét theo nghề "Chuyên viên Phân tích Dữ
+liệu (Data Analyst)" vì nó phù hợp với sở thích và kỹ năng hiện tại
+của bạn. Để hoàn thiện hơn, bạn nên học thêm các kỹ năng sau: SQL,
+Thống kê và Trực quan hóa dữ liệu.
+```
+
+### Đánh giá trace
+
+| Tiêu chí | Kết quả | Nhận xét |
+| :--- | :---: | :--- |
+| Đúng chu trình ReAct | Đạt | Mỗi bước có `Thought`, `Action` và `Observation`; bước cuối dùng `Final Answer`. |
+| Tool hợp lệ | Đạt | Chỉ gọi các tool đã đăng ký trong `AVAILABLE_TOOLS`. |
+| Tham số hợp lệ | Đạt | Tham số JSON đúng với chữ ký của từng tool. |
+| Dựa trên Observation | Đạt | Nghề đề xuất và ba kỹ năng còn thiếu đều xuất phát từ kết quả tool. |
+| Không lặp Action | Đạt | Không có tool nào bị gọi lại với cùng tham số. |
+| Guardrail số vòng | Đạt | Agent kết thúc ở bước 4/6. |
+| Mức độ hoàn chỉnh | Đạt một phần | Agent xác định được skill gap nhưng chưa gọi `recommend_learning_path`, nên chưa tạo lộ trình học chi tiết. |
+
+**Kết luận:** Trace chứng minh Agent có thể dùng dữ liệu từ tool để đưa ra
+khuyến nghị có căn cứ hơn chatbot baseline. Điểm cần cải thiện là tiếp tục
+gọi `recommend_learning_path` sau khi nhận được `missing_skills`, nếu người
+dùng yêu cầu một kế hoạch học cụ thể.
