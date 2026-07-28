@@ -164,15 +164,22 @@ SKILL_COURSE_MAP: Dict[str, Dict[str, Any]] = {
 
 def _find_career(query: str) -> Union[str, None]:
     """Tìm mã (key) nghề nghiệp trong CAREER_DATABASE theo tên/mã/alias, không phân biệt hoa thường."""
+    if not isinstance(query, str) or not query.strip():
+        return None
+
     q = query.strip().lower()
     for code, info in CAREER_DATABASE.items():
         if q == code or q == info["name"].lower() or q in info.get("aliases", []):
             return code
-    # fallback: so khớp theo chuỗi con
     for code, info in CAREER_DATABASE.items():
         if q in info["name"].lower() or q in code or any(q in a for a in info.get("aliases", [])):
             return code
     return None
+
+
+def _error(message: str) -> str:
+    """Trả về chuỗi thông báo lỗi chuẩn hóa."""
+    return f"LỖI: {message}"
 
 
 # ============================================================
@@ -182,253 +189,251 @@ def _find_career(query: str) -> Union[str, None]:
 def assess_user_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
     """
     Phân tích học vấn, kỹ năng, sở thích, tính cách và mục tiêu để tạo hồ sơ nghề nghiệp chuẩn hóa.
-
-    Args:
-        profile (dict): Hồ sơ người dùng, gồm các khóa:
-            - education (str): Trình độ / ngành học
-            - skills (List[str]): Danh sách kỹ năng hiện có
-            - interests (List[str]): Danh sách sở thích / lĩnh vực quan tâm
-            - personality (str, optional): Mô tả tính cách
-            - goals (str, optional): Mục tiêu nghề nghiệp
-
-    Returns:
-        dict: Hồ sơ nghề nghiệp đã chuẩn hóa (skills/interests đã làm sạch,
-              các lĩnh vực gợi ý phù hợp và tóm tắt hồ sơ).
     """
-    education = profile.get("education", "Chưa cung cấp")
-    raw_skills = profile.get("skills", [])
-    raw_interests = profile.get("interests", [])
-    personality = profile.get("personality", "Chưa cung cấp")
-    goals = profile.get("goals", "Chưa cung cấp")
+    try:
+        if not isinstance(profile, dict):
+            return {"error": _error("profile must be a dictionary")}
 
-    normalized_skills = [s.strip().title() for s in raw_skills if s.strip()]
-    normalized_interests = [i.strip().title() for i in raw_interests if i.strip()]
+        education = profile.get("education", "Chưa cung cấp")
+        raw_skills = profile.get("skills", [])
+        raw_interests = profile.get("interests", [])
+        personality = profile.get("personality", "Chưa cung cấp")
+        goals = profile.get("goals", "Chưa cung cấp")
 
-    FIELD_KEYWORDS = {
-        "Công nghệ / Dữ liệu": ["python", "sql", "dữ liệu", "lập trình", "logic", "công nghệ", "toán", "excel", "phân tích", "thuật toán"],
-        "Thiết kế / Sáng tạo": ["thiết kế", "vẽ", "sáng tạo", "mỹ thuật", "hình ảnh", "figma", "ui", "ux", "trải nghiệm"],
-        "Kinh doanh / Marketing": ["kinh doanh", "marketing", "bán hàng", "giao tiếp", "thuyết trình", "seo", "truyền thông", "quảng cáo"],
-        "Quản lý / Vận hành": ["quản lý", "lãnh đạo", "tổ chức", "lập kế hoạch", "dự án", "quy trình"],
-    }
+        if not isinstance(raw_skills, list):
+            raw_skills = [raw_skills]
+        if not isinstance(raw_interests, list):
+            raw_interests = [raw_interests]
 
-    combined_text = " ".join(normalized_skills + normalized_interests).lower()
-    field_scores = {
-        field: sum(1 for kw in keywords if kw in combined_text)
-        for field, keywords in FIELD_KEYWORDS.items()
-    }
-    field_scores = {f: s for f, s in field_scores.items() if s > 0}
-    suggested_fields = sorted(field_scores, key=field_scores.get, reverse=True)[:3]
-    if not suggested_fields:
-        suggested_fields = ["Chưa xác định rõ - cần bổ sung thêm sở thích/kỹ năng"]
+        normalized_skills = [str(s).strip().title() for s in raw_skills if str(s).strip()]
+        normalized_interests = [str(i).strip().title() for i in raw_interests if str(i).strip()]
 
-    return {
-        "education": education,
-        "normalized_skills": normalized_skills,
-        "normalized_interests": normalized_interests,
-        "personality": personality,
-        "career_goals": goals,
-        "suggested_fields": suggested_fields,
-        "profile_summary": (
-            f"Người dùng có nền tảng '{education}', sở hữu {len(normalized_skills)} kỹ năng, "
-            f"quan tâm đến {len(normalized_interests)} lĩnh vực. "
-            f"Định hướng phù hợp: {', '.join(suggested_fields)}."
-        ),
-    }
+        FIELD_KEYWORDS = {
+            "Công nghệ / Dữ liệu": ["python", "sql", "dữ liệu", "lập trình", "logic", "công nghệ", "toán", "excel", "phân tích", "thuật toán"],
+            "Thiết kế / Sáng tạo": ["thiết kế", "vẽ", "sáng tạo", "mỹ thuật", "hình ảnh", "figma", "ui", "ux", "trải nghiệm"],
+            "Kinh doanh / Marketing": ["kinh doanh", "marketing", "bán hàng", "giao tiếp", "thuyết trình", "seo", "truyền thông", "quảng cáo"],
+            "Quản lý / Vận hành": ["quản lý", "lãnh đạo", "tổ chức", "lập kế hoạch", "dự án", "quy trình"],
+        }
+
+        combined_text = " ".join(normalized_skills + normalized_interests).lower()
+        field_scores = {
+            field: sum(1 for kw in keywords if kw in combined_text)
+            for field, keywords in FIELD_KEYWORDS.items()
+        }
+        field_scores = {f: s for f, s in field_scores.items() if s > 0}
+        suggested_fields = sorted(field_scores, key=field_scores.get, reverse=True)[:3]
+        if not suggested_fields:
+            suggested_fields = ["Chưa xác định rõ - cần bổ sung thêm sở thích/kỹ năng"]
+
+        return {
+            "education": education,
+            "normalized_skills": normalized_skills,
+            "normalized_interests": normalized_interests,
+            "personality": personality,
+            "career_goals": goals,
+            "suggested_fields": suggested_fields,
+            "profile_summary": (
+                f"Người dùng có nền tảng '{education}', sở hữu {len(normalized_skills)} kỹ năng, "
+                f"quan tâm đến {len(normalized_interests)} lĩnh vực. "
+                f"Định hướng phù hợp: {', '.join(suggested_fields)}."
+            ),
+        }
+    except Exception as exc:
+        return {"error": _error(str(exc))}
 
 
 def search_careers(interests: List[str], skills: List[str]) -> List[Dict[str, Any]]:
     """
     Tìm các nghề phù hợp dựa trên sở thích và kỹ năng, có tính điểm mức độ phù hợp sơ bộ (match_score).
-
-    Args:
-        interests (List[str]): Danh sách sở thích/từ khóa lĩnh vực (VD: ["dữ liệu", "công nghệ"])
-        skills (List[str]): Danh sách kỹ năng hiện có (VD: ["Python", "Excel"])
-
-    Returns:
-        List[dict]: Danh sách nghề nghiệp phù hợp, sắp xếp giảm dần theo match_score;
-                    mỗi phần tử gồm career_code, career_name, field, match_score, reason.
     """
-    interests_lower = [i.strip().lower() for i in interests]
-    skills_lower = [s.strip().lower() for s in skills]
+    try:
+        if not isinstance(interests, list):
+            interests = [interests] if interests is not None else []
+        if not isinstance(skills, list):
+            skills = [skills] if skills is not None else []
 
-    results = []
-    for code, info in CAREER_DATABASE.items():
-        matched_interests = {
-            i for i in interests_lower
-            if any(i in kw or kw in i for kw in info["related_interests"])
-        }
-        matched_skills = {
-            s for s in skills_lower
-            if any(s in rs.lower() or rs.lower() in s for rs in info["required_skills"])
-        }
-        # Kỹ năng trùng khớp được ưu tiên trọng số cao hơn sở thích
-        score = len(matched_interests) * 2 + len(matched_skills) * 3
+        interests_lower = [str(i).strip().lower() for i in interests if str(i).strip()]
+        skills_lower = [str(s).strip().lower() for s in skills if str(s).strip()]
 
-        if score > 0:
-            reason_parts = []
-            if matched_interests:
-                reason_parts.append(f"phù hợp sở thích: {', '.join(matched_interests)}")
-            if matched_skills:
-                reason_parts.append(f"có sẵn kỹ năng: {', '.join(matched_skills)}")
-            results.append({
-                "career_code": code,
-                "career_name": info["name"],
-                "field": info["field"],
-                "match_score": score,
-                "reason": "; ".join(reason_parts),
-            })
+        results = []
+        for code, info in CAREER_DATABASE.items():
+            matched_interests = {
+                i for i in interests_lower
+                if any(i in kw or kw in i for kw in info["related_interests"])
+            }
+            matched_skills = {
+                s for s in skills_lower
+                if any(s in rs.lower() or rs.lower() in s for rs in info["required_skills"])
+            }
+            score = len(matched_interests) * 2 + len(matched_skills) * 3
 
-    results.sort(key=lambda x: x["match_score"], reverse=True)
+            if score > 0:
+                reason_parts = []
+                if matched_interests:
+                    reason_parts.append(f"phù hợp sở thích: {', '.join(matched_interests)}")
+                if matched_skills:
+                    reason_parts.append(f"có sẵn kỹ năng: {', '.join(matched_skills)}")
+                results.append({
+                    "career_code": code,
+                    "career_name": info["name"],
+                    "field": info["field"],
+                    "match_score": score,
+                    "reason": "; ".join(reason_parts),
+                })
 
-    if not results:
-        return [{
-            "career_code": None,
-            "career_name": "Không tìm thấy nghề phù hợp",
-            "field": None,
-            "match_score": 0,
-            "reason": "Không có sở thích/kỹ năng nào khớp với dữ liệu hiện có. Hãy thử bổ sung thêm từ khóa.",
-        }]
+        results.sort(key=lambda x: x["match_score"], reverse=True)
 
-    return results
+        if not results:
+            return [{
+                "career_code": None,
+                "career_name": "Không tìm thấy nghề phù hợp",
+                "field": None,
+                "match_score": 0,
+                "reason": "Không có sở thích/kỹ năng nào khớp với dữ liệu hiện có. Hãy thử bổ sung thêm từ khóa.",
+            }]
+
+        return results
+    except Exception as exc:
+        return [{"error": _error(str(exc))}]
 
 
 def get_career_details(career_name: str) -> Union[Dict[str, Any], str]:
     """
     Tra cứu nhiệm vụ, yêu cầu và môi trường làm việc chi tiết của một nghề.
-
-    Args:
-        career_name (str): Tên hoặc mã nghề (VD: 'Data Analyst', 'data_analyst',
-                            'Chuyên viên Phân tích Dữ liệu')
-
-    Returns:
-        dict | str: Thông tin chi tiết của nghề (mô tả, nhiệm vụ, yêu cầu, môi trường,
-                    kỹ năng cần có), hoặc chuỗi lỗi nếu không tìm thấy.
     """
-    code = _find_career(career_name)
-    if code is None:
-        return f"LỖI: Không tìm thấy thông tin nghề nghiệp cho '{career_name}'."
+    try:
+        if not isinstance(career_name, str) or not career_name.strip():
+            return _error("career_name is required")
 
-    info = CAREER_DATABASE[code]
-    return {
-        "career_code": code,
-        "career_name": info["name"],
-        "field": info["field"],
-        "description": info["description"],
-        "tasks": info["tasks"],
-        "requirements": info["requirements"],
-        "environment": info["environment"],
-        "required_skills": info["required_skills"],
-    }
+        code = _find_career(career_name)
+        if code is None:
+            return _error(f"Không tìm thấy thông tin nghề nghiệp cho '{career_name}'.")
+
+        info = CAREER_DATABASE[code]
+        return {
+            "career_code": code,
+            "career_name": info["name"],
+            "field": info["field"],
+            "description": info["description"],
+            "tasks": info["tasks"],
+            "requirements": info["requirements"],
+            "environment": info["environment"],
+            "required_skills": info["required_skills"],
+        }
+    except Exception as exc:
+        return _error(str(exc))
 
 
 def analyze_skill_gap(user_skills: List[str], target_career: str) -> Union[Dict[str, Any], str]:
     """
     So sánh kỹ năng hiện có của người dùng với yêu cầu kỹ năng của nghề mục tiêu.
-
-    Args:
-        user_skills (List[str]): Danh sách kỹ năng hiện có của người dùng
-        target_career (str): Tên hoặc mã nghề mục tiêu
-
-    Returns:
-        dict | str: Kết quả gồm matched_skills, missing_skills, match_percentage,
-                    hoặc chuỗi lỗi nếu không tìm thấy nghề.
     """
-    code = _find_career(target_career)
-    if code is None:
-        return f"LỖI: Không tìm thấy nghề '{target_career}' để phân tích khoảng cách kỹ năng."
+    try:
+        if not isinstance(user_skills, list):
+            user_skills = [user_skills] if user_skills is not None else []
+        if not isinstance(target_career, str) or not target_career.strip():
+            return _error("target_career is required")
 
-    info = CAREER_DATABASE[code]
-    required_skills = info["required_skills"]
-    user_skills_lower = [s.strip().lower() for s in user_skills]
+        code = _find_career(target_career)
+        if code is None:
+            return _error(f"Không tìm thấy nghề '{target_career}' để phân tích khoảng cách kỹ năng.")
 
-    matched_skills = [
-        rs for rs in required_skills
-        if any(rs.lower() in us or us in rs.lower() for us in user_skills_lower)
-    ]
-    missing_skills = [rs for rs in required_skills if rs not in matched_skills]
-    match_percentage = round(len(matched_skills) / len(required_skills) * 100, 1) if required_skills else 0.0
+        info = CAREER_DATABASE[code]
+        required_skills = info["required_skills"]
+        user_skills_lower = [str(s).strip().lower() for s in user_skills if str(s).strip()]
 
-    return {
-        "career_code": code,
-        "career_name": info["name"],
-        "matched_skills": matched_skills,
-        "missing_skills": missing_skills,
-        "match_percentage": match_percentage,
-        "summary": (
-            f"Bạn đã đáp ứng {len(matched_skills)}/{len(required_skills)} kỹ năng yêu cầu "
-            f"cho nghề '{info['name']}' (đạt {match_percentage}%)."
-        ),
-    }
+        matched_skills = [
+            rs for rs in required_skills
+            if any(rs.lower() in us or us in rs.lower() for us in user_skills_lower)
+        ]
+        missing_skills = [rs for rs in required_skills if rs not in matched_skills]
+        match_percentage = round(len(matched_skills) / len(required_skills) * 100, 1) if required_skills else 0.0
+
+        return {
+            "career_code": code,
+            "career_name": info["name"],
+            "matched_skills": matched_skills,
+            "missing_skills": missing_skills,
+            "match_percentage": match_percentage,
+            "summary": (
+                f"Bạn đã đáp ứng {len(matched_skills)}/{len(required_skills)} kỹ năng yêu cầu "
+                f"cho nghề '{info['name']}' (đạt {match_percentage}%)."
+            ),
+        }
+    except Exception as exc:
+        return _error(str(exc))
 
 
 def recommend_learning_path(missing_skills: List[str], duration_months: int) -> Dict[str, Any]:
     """
     Tạo lộ trình học theo giai đoạn để bù đắp các kỹ năng còn thiếu.
-
-    Args:
-        missing_skills (List[str]): Danh sách kỹ năng còn thiếu (thường lấy từ analyze_skill_gap)
-        duration_months (int): Thời gian dự kiến hoàn thành lộ trình (số tháng)
-
-    Returns:
-        dict: Lộ trình học chia theo giai đoạn; mỗi giai đoạn gồm tên, số tháng,
-              danh sách kỹ năng cần học và khóa học gợi ý.
     """
-    if not missing_skills:
+    try:
+        if not isinstance(missing_skills, list):
+            missing_skills = [missing_skills] if missing_skills is not None else []
+
+        try:
+            duration_value = int(duration_months)
+        except (TypeError, ValueError):
+            return {"error": _error("duration_months must be an integer")}
+
+        if not missing_skills:
+            return {
+                "duration_months": duration_value,
+                "phases": [],
+                "note": "Bạn đã đáp ứng đủ kỹ năng yêu cầu! Có thể tập trung làm dự án thực tế hoặc luyện phỏng vấn.",
+            }
+
+        if duration_value >= 6:
+            phase_names = ["Nền tảng", "Nâng cao", "Ứng dụng thực tế"]
+        elif duration_value >= 3:
+            phase_names = ["Nền tảng", "Ứng dụng thực tế"]
+        else:
+            phase_names = ["Tập trung cấp tốc"]
+
+        num_phases = len(phase_names)
+        base_months = duration_value // num_phases
+        remainder = duration_value % num_phases
+        months_per_phase = [base_months + (1 if i < remainder else 0) for i in range(num_phases)]
+
+        skills_per_phase: List[List[str]] = [[] for _ in range(num_phases)]
+        for idx, skill in enumerate(missing_skills):
+            skills_per_phase[idx % num_phases].append(str(skill))
+
+        phases = []
+        for i, phase_name in enumerate(phase_names):
+            phase_skills = skills_per_phase[i]
+            courses = []
+            for skill in phase_skills:
+                course_info = SKILL_COURSE_MAP.get(skill.strip().lower())
+                if course_info:
+                    courses.append({
+                        "skill": skill,
+                        "suggested_course": course_info["course"],
+                        "estimated_hours": course_info["hours"],
+                    })
+                else:
+                    courses.append({
+                        "skill": skill,
+                        "suggested_course": f"Khóa học online cơ bản về '{skill}' (chưa có dữ liệu cụ thể)",
+                        "estimated_hours": 20,
+                    })
+
+            phases.append({
+                "phase_name": phase_name,
+                "duration_months": months_per_phase[i],
+                "skills_to_learn": phase_skills,
+                "courses": courses,
+            })
+
         return {
-            "duration_months": duration_months,
-            "phases": [],
-            "note": "Bạn đã đáp ứng đủ kỹ năng yêu cầu! Có thể tập trung làm dự án thực tế hoặc luyện phỏng vấn.",
+            "duration_months": duration_value,
+            "total_missing_skills": len(missing_skills),
+            "phases": phases,
+            "note": f"Lộ trình được chia thành {num_phases} giai đoạn trong {duration_value} tháng.",
         }
-
-    if duration_months >= 6:
-        phase_names = ["Nền tảng", "Nâng cao", "Ứng dụng thực tế"]
-    elif duration_months >= 3:
-        phase_names = ["Nền tảng", "Ứng dụng thực tế"]
-    else:
-        phase_names = ["Tập trung cấp tốc"]
-
-    num_phases = len(phase_names)
-    base_months = duration_months // num_phases
-    remainder = duration_months % num_phases
-    months_per_phase = [base_months + (1 if i < remainder else 0) for i in range(num_phases)]
-
-    # Phân bổ kỹ năng lần lượt (round-robin) theo thứ tự ưu tiên đầu vào
-    skills_per_phase: List[List[str]] = [[] for _ in range(num_phases)]
-    for idx, skill in enumerate(missing_skills):
-        skills_per_phase[idx % num_phases].append(skill)
-
-    phases = []
-    for i, phase_name in enumerate(phase_names):
-        phase_skills = skills_per_phase[i]
-        courses = []
-        for skill in phase_skills:
-            course_info = SKILL_COURSE_MAP.get(skill.strip().lower())
-            if course_info:
-                courses.append({
-                    "skill": skill,
-                    "suggested_course": course_info["course"],
-                    "estimated_hours": course_info["hours"],
-                })
-            else:
-                courses.append({
-                    "skill": skill,
-                    "suggested_course": f"Khóa học online cơ bản về '{skill}' (chưa có dữ liệu cụ thể)",
-                    "estimated_hours": 20,
-                })
-
-        phases.append({
-            "phase_name": phase_name,
-            "duration_months": months_per_phase[i],
-            "skills_to_learn": phase_skills,
-            "courses": courses,
-        })
-
-    return {
-        "duration_months": duration_months,
-        "total_missing_skills": len(missing_skills),
-        "phases": phases,
-        "note": f"Lộ trình được chia thành {num_phases} giai đoạn trong {duration_months} tháng.",
-    }
+    except Exception as exc:
+        return {"error": _error(str(exc))}
 
 
 # ============================================================
